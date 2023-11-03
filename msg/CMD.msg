@@ -1,2 +1,3 @@
-int16 vx
-int16 yaw
+uint8 state
+float32 vx
+float32 yaw

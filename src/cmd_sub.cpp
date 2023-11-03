@@ -9,7 +9,7 @@
 
 using namespace std; //声明命名空间
 
-#define FRAME_SIZE 7
+#define FRAME_SIZE 12
 #define RX_BUFFER_SIZE 1024
 
 typedef union
@@ -28,7 +28,7 @@ typedef struct
 
 //实例化一个serial类
 serial::Serial mySerial;
-uint8_t send_data[FRAME_SIZE];
+
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 MyFrame_t frame;
 
@@ -52,14 +52,31 @@ int serial_read(serial::Serial &ser, std::string &serial_msg)
 
 void sub_callback(const car_ros::CMD::ConstPtr &cmd)
 {
-    ROS_INFO("CMD INFO : %d,  %d", cmd->vx, cmd->yaw);
+    ROS_INFO("CMD INFO : %d, %f,  %f", cmd->state, cmd->vx, cmd->yaw);
     ROS_INFO("Sending cmd message to the car :");
 
-    send_data[2] = cmd->vx >> 8;
-    send_data[3] = cmd->vx;
-    send_data[4] = cmd->yaw >> 8;
-    send_data[5] = cmd->yaw;
-    mySerial.write(send_data, FRAME_SIZE);
+    data_u _temp;
+    uint8_t data_to_send[FRAME_SIZE];
+    uint8_t _cnt = 0;
+
+    data_to_send[_cnt++] = 0x9A;
+    data_to_send[_cnt++] = 0xB4;
+    data_to_send[_cnt++] = cmd->state;
+
+    _temp.data = cmd->vx;
+    data_to_send[_cnt++] = _temp.data8[0];
+    data_to_send[_cnt++] = _temp.data8[1];
+    data_to_send[_cnt++] = _temp.data8[2];
+    data_to_send[_cnt++] = _temp.data8[3];
+
+    _temp.data = cmd->yaw;
+    data_to_send[_cnt++] = _temp.data8[0];
+    data_to_send[_cnt++] = _temp.data8[1];
+    data_to_send[_cnt++] = _temp.data8[2];
+    data_to_send[_cnt++] = _temp.data8[3];
+
+    data_to_send[_cnt++] = 0x4F;
+    mySerial.write(data_to_send,  _cnt);
 }
 
 int main(int argc, char** argv)
@@ -72,9 +89,9 @@ int main(int argc, char** argv)
     //用Publisher类，实例化一个发布者对象yao，发布一个名为"Serial_Topic"的话题，话题的消息类型为std_msgs::String，消息发布队列长度为10(注意话题名中间不能有空格)
     ros::Subscriber serial_sub = nh.subscribe<car_ros::CMD>("serial_cmd", 10, sub_callback);
 
-    ros::Publisher imu_pub = nh.advertise<car_ros::IMU>("IMU",10);
+    ros::Publisher imu_pub = nh.advertise<car_ros::IMU>("imu",10);
     //初始化串口相关设置
-    mySerial.setPort("/dev/ttyUSB3");         //设置打开的串口名称
+    mySerial.setPort("/dev/ttyUSB0");         //设置打开的串口名称
     mySerial.setBaudrate(115200);           //设置串口的波特率
     serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);  //创建timeout
     mySerial.setTimeout(timeout);                //设置串口的timeout
@@ -100,20 +117,17 @@ int main(int argc, char** argv)
         return -1;  //打开串口失败，打印日志信息，然后结束程序
     }
     uint8_t my[sizeof(MyFrame_t)];
-    car_ros::CMD cmd;
-    send_data[0] = 0x9A;
-    send_data[1] = 0x01;
-    send_data[6] = 0x4F;
+
     ros::Rate loop_rate(50);   //指定循环频率50
     while(ros::ok())
     {
         car_ros::IMU imu;
-        data_u fdata1, fdata2, fdata3;
+        MyFrame_t m;
+
         if(mySerial.available())
         {
             size_t n = mySerial.read(rx_buffer, mySerial.available());
             int state = 0;
-            MyFrame_t m;
             uint8_t rx_data[18] = {0};
             for(int i = 0; i < n && i < RX_BUFFER_SIZE; i++)
             {
@@ -144,8 +158,12 @@ int main(int argc, char** argv)
                 else state = 0;
             }
         }
+        imu.roll = m.fdata[0].data;
+        imu.pitch = m.fdata[1].data;
+        imu.yaw = m.fdata[2].data;
+        imu_pub.publish(imu);
 
-        // ros::spinOnce();
+        ros::spinOnce();
         loop_rate.sleep();
     }
   

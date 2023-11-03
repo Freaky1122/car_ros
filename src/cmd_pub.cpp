@@ -4,10 +4,20 @@
 #include <iostream>
 #include <string>
 #include <car_ros/CMD.h>
+#include <sensor_msgs/Joy.h>
+#include <sensor_msgs/JoyFeedbackArray.h>
 
-
+#define MAXSPEED 200
+#define MAXYAW 600
 //using namespace std; //声明命名空间
+car_ros::CMD cmd;
 
+void joy_sub_callback(const sensor_msgs::Joy::ConstPtr &joy)
+{
+     cmd.state = 0x01;
+     cmd.vx = joy->axes[1] * MAXSPEED;
+     cmd.yaw = -joy->axes[0] * MAXYAW;
+}
 
 int main(int argc, char** argv)
 {
@@ -18,20 +28,18 @@ int main(int argc, char** argv)
 
     //用Publisher类，实例化一个发布者对象
     ros::Publisher serial_pub = nh.advertise<car_ros::CMD>("serial_cmd",10);
+    ros::Subscriber joy_sub = nh.subscribe<sensor_msgs::Joy>("joy", 100, joy_sub_callback);
 
 
-    car_ros::CMD cmd;
-    ros::Rate loop_rate(20); //指定循环频率2
-
+    ros::Rate loop_rate(50); //指定循环频率2
+    sensor_msgs::JoyFeedbackArray joy_feedback;
     while(ros::ok())
     {
-        ROS_INFO_STREAM("Publish the cmd message:"); //表明正在开始读取串口数据
-        
-        cmd.vx = 280;
-        cmd.yaw = 59;
         serial_pub.publish(cmd);  //将消息发布出去
-        ROS_INFO("VX: %d, V_YAW: %d\n", cmd.vx, cmd.yaw);
+        ROS_INFO("Publish the cmd message:"); //表明正在开始读取串口数据
+        ROS_INFO("STATE: %d, VX: %f, V_YAW: %f\n", cmd.state,cmd.vx, cmd.yaw);
 
+        ros::spinOnce();
         loop_rate.sleep();
     }
 

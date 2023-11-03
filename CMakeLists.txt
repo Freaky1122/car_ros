@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   serial
   std_msgs
+  sensor_msgs
   message_generation
 )
 
@@ -136,6 +137,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(cmd_pub_node src/cmd_pub.cpp)
 add_executable(cmd_sub_node src/cmd_sub.cpp)
+add_executable(joy_pub_node src/joy_feedback.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -147,12 +149,16 @@ add_executable(cmd_sub_node src/cmd_sub.cpp)
 ## same as for the library above
 add_dependencies(cmd_pub_node ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(cmd_sub_node ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(joy_pub_node ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(cmd_pub_node
   ${catkin_LIBRARIES}
 )
 target_link_libraries(cmd_sub_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(joy_pub_node
   ${catkin_LIBRARIES}
 )
 #############
