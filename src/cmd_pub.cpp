@@ -7,8 +7,8 @@
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/JoyFeedbackArray.h>
 
-#define MAXSPEED 200
-#define MAXYAW 600
+#define MAXSPEED 12
+#define MAXYAW 50
 //using namespace std; //声明命名空间
 car_ros::CMD cmd;
 
@@ -30,9 +30,7 @@ int main(int argc, char** argv)
     ros::Publisher serial_pub = nh.advertise<car_ros::CMD>("serial_cmd",10);
     ros::Subscriber joy_sub = nh.subscribe<sensor_msgs::Joy>("joy", 100, joy_sub_callback);
 
-
     ros::Rate loop_rate(50); //指定循环频率2
-    sensor_msgs::JoyFeedbackArray joy_feedback;
     while(ros::ok())
     {
         serial_pub.publish(cmd);  //将消息发布出去
